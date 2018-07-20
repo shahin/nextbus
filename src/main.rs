@@ -35,9 +35,11 @@ struct Vehicle {
     #[serde(deserialize_with = "from_string")]
     pub predictable: bool,
     #[serde(deserialize_with = "from_string")]
-    pub heading: u16,
+    pub heading: i16,
     #[serde(deserialize_with = "from_string")]
     pub speed_km_hr: u32,
+    #[serde(default)]
+    pub leading_vehicle_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,7 +67,7 @@ struct VehicleTime {
     pub lon: f32,
     pub epoch: u64,
     pub predictable: bool,
-    pub heading: u16,
+    pub heading: i16,
     pub speed_km_hr: u32,
 }
 
