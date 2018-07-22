@@ -109,10 +109,14 @@ fn run(agency: String, route: String) -> Result<()> {
             None => 0,
         };
 
-        let locations = download_locations(&agency, &route, &epoch).unwrap();
-        if locations.vehicles.len() == 0 {
-            continue;
-        }
+        let downloaded = download_locations(&agency, &route, &epoch).unwrap_or_else(|e| {
+            warn!("Error downloading locations: {}", e);
+            None
+        });
+        let locations = match downloaded {
+            Some(locations) => locations,
+            None => { continue },
+        };
 
         let updated_time = locations.updated_time.time;
         times.insert(route.clone(), updated_time);
@@ -131,13 +135,11 @@ fn run(agency: String, route: String) -> Result<()> {
 
         let locations_json = serde_json::to_string(&location_times).unwrap();
         println!("{}", locations_json);
-
-        thread::sleep(std::time::Duration::from_millis(1000))
     }
 
 }
 
-fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Locations> {
+fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Option<Locations>> {
     let url = get_api_url(agency, route, epoch);
 
     let mut response = reqwest::get(&url[..])?;
@@ -148,13 +150,18 @@ fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Lo
     let status = response.status();
     match status {
         reqwest::StatusCode::Ok => {
-            debug!("request={} response={:?} response_date={}", url, status, date);
+            debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             println!("{:?}", body);
-            let locations: Locations = deserialize(body.as_bytes()).unwrap();
-            Ok(locations)
+            let locations: Option<Locations> = deserialize(body.as_bytes()).ok().and_then(|any_locs: Locations| {
+                if any_locs.vehicles.len() == 0 {
+                    return Some(any_locs)
+                }
+                None
+            });
+            return Ok(locations);
         },
         _ => {
-            warn!("request={} response={:?} response_date={}", url, status, date);
+            warn!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             Err(format!("Bad response: {}", status).into())
         },
     }
