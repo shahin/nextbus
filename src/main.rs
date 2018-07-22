@@ -108,23 +108,8 @@ fn run(agency: String, route: String) -> Result<()> {
             Some(&i) => i,
             None => 0,
         };
-        let url = get_api_url(&agency, &route, &epoch);
 
-        let mut response = reqwest::get(&url[..])?;
-        let body = response.text()?;
-        let date = response.headers().get::<reqwest::header::Date>()
-            .map(|d| **d)
-            .unwrap();
-        let status = response.status();
-        match status {
-            reqwest::StatusCode::Ok => debug!("request={} response={:?} response_date={}", url, status, date),
-            _ => {
-                warn!("request={} response={:?} response_date={}", url, status, date);
-                continue;
-            },
-        }
-
-        let locations: Locations = deserialize(body.as_bytes()).unwrap();
+        let locations = download_locations(&agency, &route, &epoch).unwrap();
         if locations.vehicles.len() == 0 {
             continue;
         }
@@ -148,6 +133,30 @@ fn run(agency: String, route: String) -> Result<()> {
         println!("{}", locations_json);
 
         thread::sleep(std::time::Duration::from_millis(1000))
+    }
+
+}
+
+fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Locations> {
+    let url = get_api_url(agency, route, epoch);
+
+    let mut response = reqwest::get(&url[..])?;
+    let body = response.text()?;
+    let date = response.headers().get::<reqwest::header::Date>()
+        .map(|d| **d)
+        .unwrap();
+    let status = response.status();
+    match status {
+        reqwest::StatusCode::Ok => {
+            debug!("request={} response={:?} response_date={}", url, status, date);
+            println!("{:?}", body);
+            let locations: Locations = deserialize(body.as_bytes()).unwrap();
+            Ok(locations)
+        },
+        _ => {
+            warn!("request={} response={:?} response_date={}", url, status, date);
+            Err(format!("Bad response: {}", status).into())
+        },
     }
 
 }
