@@ -104,6 +104,9 @@ fn run(agency: String, route: String) -> Result<()> {
     let mut times = HashMap::new();
 
     loop {
+
+        thread::sleep(std::time::Duration::from_millis(1000));
+
         let epoch = match times.get(&route) {
             Some(&i) => i,
             None => 0,
