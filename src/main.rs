@@ -15,7 +15,7 @@ use serde::de::{self, Deserializer, Deserialize};
 use std::result::Result as StdResult;
 use std::collections::HashMap;
 use std::thread;
-use clap::App;
+use clap::{App, SubCommand};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -90,7 +90,16 @@ error_chain! {
     }
 }
 
-fn get_api_url(agency: &String, route: &String, epoch: &u64) -> String {
+fn get_predictions_url(agency: &String, route: &String, stop: &String) -> String {
+    format!(
+        "http://webservices.nextbus.com/service/publicXMLFee?command=predictionsForMultiStops&a={agency}&s={route}|{stop}",
+        agency = agency,
+        route = route,
+        stop = stop,
+    )
+}
+
+fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
     format!(
         "http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a={agency}&r={route}&t={epoch:?}",
         agency = agency,
@@ -99,8 +108,25 @@ fn get_api_url(agency: &String, route: &String, epoch: &u64) -> String {
     )
 }
 
-fn run(agency: String, route: String) -> Result<()> {
-    env_logger::init();
+fn get_predictions(agency: String, route: String) -> Result<()> {
+    loop {
+
+        thread::sleep(std::time::Duration::from_millis(1000));
+
+        let stop = String::from("7447");
+        let url = get_predictions_url(&agency, &route, &stop);
+        let downloaded: Option<Predictions> = download(&url).unwrap_or_else(|e| {
+            warn!("Error downloading predictions: {}", e);
+            None
+        });
+    }
+}
+
+fn get_schedule(agency: String, route: String) -> Result<()> {
+    Ok(())
+}
+
+fn get_locations(agency: String, route: String) -> Result<()> {
     let mut times = HashMap::new();
 
     loop {
@@ -112,7 +138,8 @@ fn run(agency: String, route: String) -> Result<()> {
             None => 0,
         };
 
-        let downloaded = download_locations(&agency, &route, &epoch).unwrap_or_else(|e| {
+        let url = get_locations_url(&agency, &route, &epoch);
+        let downloaded: Option<Locations> = download(&url).unwrap_or_else(|e| {
             warn!("Error downloading locations: {}", e);
             None
         });
@@ -142,8 +169,8 @@ fn run(agency: String, route: String) -> Result<()> {
 
 }
 
-fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Option<Locations>> {
-    let url = get_api_url(agency, route, epoch);
+fn download<'de, T>(url: &String) -> Result<Option<T>> where
+    T: Deserialize<'de> {
 
     let mut response = reqwest::get(&url[..])?;
     let body = response.text()?;
@@ -155,11 +182,8 @@ fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Op
         reqwest::StatusCode::Ok => {
             debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             println!("{:?}", body);
-            let locations: Option<Locations> = deserialize(body.as_bytes()).ok().and_then(|any_locs: Locations| {
-                if any_locs.vehicles.len() == 0 {
-                    return Some(any_locs)
-                }
-                None
+            let locations: Option<T> = deserialize(body.as_bytes()).ok().and_then(|any_locs: T| {
+                return Some(any_locs)
             });
             return Ok(locations);
         },
@@ -172,15 +196,41 @@ fn download_locations(agency: &String, route: &String, epoch: &u64) -> Result<Op
 }
 
 fn main() {
+    env_logger::init();
+
     let cli = App::new("Nextbus Client")
         .author("Shahin Saneinejad")
         .about("Get real-time locations of transit vehicles as JSON")
-        .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
-        .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+        .subcommand(SubCommand::with_name("locations")
+            .about("Get real-time locations for vehicles")
+            .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
+            .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+        )
+        .subcommand(SubCommand::with_name("predictions")
+            .about("Get predictions for vehicle arrival times")
+            .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
+            .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+        )
         .get_matches();
 
-    let route = String::from(cli.value_of("route").unwrap_or(""));
-    let agency = String::from(cli.value_of("agency").unwrap());
+    match cli.subcommand() {
+        ("locations", Some(subc)) => {
+            let route = String::from(subc.value_of("route").unwrap_or(""));
+            let agency = String::from(subc.value_of("agency").unwrap());
+            get_locations(agency, route)
+        },
+        ("predictions", Some(subc)) => {
+            let route = String::from(subc.value_of("route").unwrap_or(""));
+            let agency = String::from(subc.value_of("agency").unwrap());
+            get_predictions(agency, route)
+        },
+        ("schedule", Some(subc)) => {
+            let route = String::from(subc.value_of("route").unwrap_or(""));
+            let agency = String::from(subc.value_of("agency").unwrap());
+            get_schedule(agency, route)
+        },
+        (c, Some(_)) => panic!("Unimplemented subcommand '{}'", c),
+        _ => panic!("Missing or invalid subcommand"),
+    };
 
-    run(agency, route);
 }
