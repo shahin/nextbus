@@ -5,6 +5,7 @@ extern crate serde_xml_rs;
 extern crate serde_json;
 extern crate clap;
 #[macro_use] extern crate error_chain;
+use error_chain::ChainedError;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate log;
 
@@ -15,7 +16,7 @@ use serde::de::{self, Deserializer, Deserialize};
 use std::result::Result as StdResult;
 use std::collections::HashMap;
 use std::thread;
-use clap::{App, SubCommand};
+use clap::{Arg, App, SubCommand};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -71,6 +72,54 @@ struct VehicleTime {
     pub speed_km_hr: u32,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct PredictionsList {
+    pub predictions: Vec<Predictions>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Predictions {
+    pub direction: Direction,
+    pub agency_title: String,
+    pub route_title: String,
+    pub route_tag: String,
+    pub stop_tag: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Direction {
+    pub prediction: Vec<Prediction>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Prediction {
+    #[serde(deserialize_with = "from_string")]
+    #[serde(rename = "epochTime")]
+    pub epoch: u64,
+    #[serde(deserialize_with = "from_string")]
+    pub seconds: u64,
+    #[serde(deserialize_with = "from_string")]
+    pub minutes: u64,
+    #[serde(deserialize_with = "from_string")]
+    pub is_departure: bool,
+    pub dir_tag: String,
+    #[serde(deserialize_with = "from_string", default)]
+    pub affected_by_layover: bool,
+    #[serde(deserialize_with = "from_string", default)]
+    pub delayed: bool,
+    #[serde(deserialize_with = "from_string", default)]
+    pub slowness: f32,
+    pub vehicle: String,
+    #[serde(deserialize_with = "from_string", default)]
+    pub vehicles_in_consist: u32,
+    pub block: String,
+    pub trip_tag: String,
+}
+
 // Explicit deserialization converter from a String to a FromStr-implementer
 // https://github.com/serde-rs/json/issues/317
 fn from_string<'de, T, D>(deserializer: D) -> StdResult<T, D::Error>
@@ -87,12 +136,13 @@ error_chain! {
     foreign_links {
         ReqError(reqwest::Error);
         IoError(std::io::Error);
+        SerdeError(serde_xml_rs::Error);
     }
 }
 
 fn get_predictions_url(agency: &String, route: &String, stop: &String) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFee?command=predictionsForMultiStops&a={agency}&s={route}|{stop}",
+        "http://webservices.nextbus.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={route}|{stop}",
         agency = agency,
         route = route,
         stop = stop,
@@ -111,14 +161,21 @@ fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
 fn get_predictions(agency: String, route: String) -> Result<()> {
     loop {
 
-        thread::sleep(std::time::Duration::from_millis(1000));
+        thread::sleep(std::time::Duration::from_millis(20000));
 
-        let stop = String::from("7447");
+        // TODO: replace test stop with a query for all stops for the given route
+        let stop = String::from("6997");
         let url = get_predictions_url(&agency, &route, &stop);
-        let downloaded: Option<Predictions> = download(&url).unwrap_or_else(|e| {
-            warn!("Error downloading predictions: {}", e);
+        let downloaded: Option<PredictionsList> = download(&url).unwrap_or_else(|e| {
+            warn!("Error downloading {}", e.display_chain().to_string());
             None
         });
+        let predictions = match downloaded {
+            Some(predictions) => predictions,
+            None => continue,
+        };
+        let predictions_json = serde_json::to_string(&predictions).unwrap();
+        println!("{}", predictions_json);
     }
 }
 
@@ -170,7 +227,7 @@ fn get_locations(agency: String, route: String) -> Result<()> {
 }
 
 fn download<'de, T>(url: &String) -> Result<Option<T>> where
-    T: Deserialize<'de> {
+    T: Deserialize<'de> + std::fmt::Debug {
 
     let mut response = reqwest::get(&url[..])?;
     let body = response.text()?;
@@ -181,15 +238,16 @@ fn download<'de, T>(url: &String) -> Result<Option<T>> where
     match status {
         reqwest::StatusCode::Ok => {
             debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
-            println!("{:?}", body);
-            let locations: Option<T> = deserialize(body.as_bytes()).ok().and_then(|any_locs: T| {
-                return Some(any_locs)
-            });
-            return Ok(locations);
+            deserialize(body.as_bytes())
+                .and_then(|d| {
+                    // TODO: add is_empty() trait to Locations, PredictionList, ... to return None here if we got nothing
+                    Ok(Some(d))
+                })
+                .chain_err(|| "Error on deserialization!")
         },
         _ => {
             warn!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
-            Err(format!("Bad response: {}", status).into())
+            return Err(format!("Bad response: {}", status).into());
         },
     }
 
@@ -208,8 +266,17 @@ fn main() {
         )
         .subcommand(SubCommand::with_name("predictions")
             .about("Get predictions for vehicle arrival times")
-            .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
-            .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+            .args(&[
+                Arg::with_name("agency")
+                    .help("Agency of the route to retrieve locations for (ex: sf-muni)")
+                    .index(1)
+                    .required(true),
+                Arg::with_name("route")
+                    .help("Route and stop identifier, separated by a pipe | character (ex: N|6997)")
+                    .index(2)
+                    .required(true)
+                    .multiple(true),
+            ])
         )
         .get_matches();
 
