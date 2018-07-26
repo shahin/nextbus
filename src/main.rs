@@ -120,6 +120,22 @@ struct Prediction {
     pub trip_tag: String,
 }
 
+pub trait Contents {
+    fn is_empty(&self) -> bool;
+}
+
+impl Contents for Locations {
+    fn is_empty(&self) -> bool {
+        self.vehicles.len() == 0
+    }
+}
+
+impl Contents for PredictionsList {
+    fn is_empty(&self) -> bool {
+        self.predictions.len() == 0
+    }
+}
+
 // Explicit deserialization converter from a String to a FromStr-implementer
 // https://github.com/serde-rs/json/issues/317
 fn from_string<'de, T, D>(deserializer: D) -> StdResult<T, D::Error>
@@ -163,7 +179,6 @@ fn get_predictions(agency: String, route: String) -> Result<()> {
 
         thread::sleep(std::time::Duration::from_millis(20000));
 
-        // TODO: replace test stop with a query for all stops for the given route
         let stop = String::from("6997");
         let url = get_predictions_url(&agency, &route, &stop);
         let downloaded: Option<PredictionsList> = download(&url).unwrap_or_else(|e| {
@@ -227,7 +242,7 @@ fn get_locations(agency: String, route: String) -> Result<()> {
 }
 
 fn download<'de, T>(url: &String) -> Result<Option<T>> where
-    T: Deserialize<'de> + std::fmt::Debug {
+    T: Deserialize<'de> + std::fmt::Debug + Contents {
 
     let mut response = reqwest::get(&url[..])?;
     let body = response.text()?;
@@ -239,9 +254,14 @@ fn download<'de, T>(url: &String) -> Result<Option<T>> where
         reqwest::StatusCode::Ok => {
             debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             deserialize(body.as_bytes())
-                .and_then(|d| {
+                .and_then(|d: T| {
                     // TODO: add is_empty() trait to Locations, PredictionList, ... to return None here if we got nothing
-                    Ok(Some(d))
+                    if d.is_empty() {
+                        Ok(None)
+                    }
+                    else {
+                        Ok(Some(d))
+                    }
                 })
                 .chain_err(|| "Error on deserialization!")
         },
