@@ -230,7 +230,7 @@ fn get_predictions(agency: String, route: String) -> Result<()> {
         let stop = String::from("6997");
         let url = get_predictions_url(&agency, &route, &stop);
         let downloaded: Option<PredictionsList> = download(&url).unwrap_or_else(|e| {
-            warn!("Error downloading {}", e.display_chain().to_string());
+            warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
             None
         });
         let predictions = match downloaded {
@@ -245,7 +245,7 @@ fn get_predictions(agency: String, route: String) -> Result<()> {
 fn get_schedule(agency: String, route: String) -> Result<()> {
     let url = get_schedule_url(&agency, &route);
     let downloaded: Option<Schedule> = download(&url).unwrap_or_else(|e| {
-        warn!("Error downloading {} from {}", e.display_chain().to_string(), url);
+        warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
         None
     });
     let schedule = match downloaded {
@@ -273,7 +273,7 @@ fn get_locations(agency: String, route: String) -> Result<()> {
 
         let url = get_locations_url(&agency, &route, &epoch);
         let downloaded: Option<Locations> = download(&url).unwrap_or_else(|e| {
-            warn!("Error downloading locations: {}", e);
+            warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
             None
         });
         let locations = match downloaded {
@@ -324,7 +324,7 @@ fn download<'de, T>(url: &String) -> Result<Option<T>> where
                         Ok(Some(d))
                     }
                 })
-                .chain_err(|| "Error on deserialization!")
+                .chain_err(|| "Deserialization failed.")
         },
         _ => {
             warn!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
