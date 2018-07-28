@@ -142,6 +142,8 @@ struct Route {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct VehicleBlock {
+    #[serde(rename = "blockID")]
+    pub block_id: String,
     #[serde(rename = "stop")]
     pub stops: Vec<VehicleStop>,
 }
