@@ -206,12 +206,12 @@ fn get_schedule_url(agency: &String, route: &String) -> String {
     )
 }
 
-fn get_predictions_url(agency: &String, route: &String, stop: &String) -> String {
+fn get_predictions_url(agency: &String, route: &String, stops: &Vec<String>) -> String {
+    let route_stops: Vec<String> = stops.into_iter().map(|s| route.to_string() + "|" + s).collect();
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={route}|{stop}",
+        "http://webservices.nextbus.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={stops}",
         agency = agency,
-        route = route,
-        stop = stop,
+        stops = route_stops.join("&stops="),
     )
 }
 
@@ -224,13 +224,18 @@ fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
     )
 }
 
-fn get_predictions(agency: String, route: String) -> Result<()> {
+fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Result<()> {
+    let mut n_attempts = 0;
+    println!("{:?}", stops);
+
     loop {
+        if n_attempts > 0 {
+            thread::sleep(std::time::Duration::from_millis(20000));
+        }
+        n_attempts += 1;
 
-        thread::sleep(std::time::Duration::from_millis(20000));
-
-        let stop = String::from("6997");
-        let url = get_predictions_url(&agency, &route, &stop);
+        let url = get_predictions_url(&agency, &route, &stops);
+        println!("{}", url);
         let downloaded: Option<PredictionsList> = download(&url).unwrap_or_else(|e| {
             warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
             None
@@ -355,14 +360,20 @@ fn main() {
                     .index(1)
                     .required(true),
                 Arg::with_name("route")
-                    .help("Route and stop identifier, separated by a pipe | character (ex: N|6997)")
+                    .help("Route to get predictions for (ex: N)")
                     .index(2)
+                    .required(true),
+                Arg::with_name("stops")
+                    .help("Stop tags to get predictions for (ex: 6997)")
                     .required(true)
-                    .multiple(true),
+                    .multiple(true)
+                    .use_delimiter(true)
+                    .value_delimiter(" ")
+                    .last(true),
             ])
         )
         .subcommand(SubCommand::with_name("schedule")
-            .about("Get predictions for vehicle arrival times")
+            .about("Get the published schedule for a route")
             .args(&[
                 Arg::with_name("agency")
                     .help("Agency of the route to schedules for (ex: sf-muni)")
@@ -386,7 +397,9 @@ fn main() {
         ("predictions", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
-            get_predictions(agency, route)
+            let stops = subc.values_of("stops").unwrap().collect::<Vec<_>>();
+            let stops = stops.into_iter().map(|s| String::from(s)).collect();
+            get_predictions(agency, route, stops)
         },
         ("schedule", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
