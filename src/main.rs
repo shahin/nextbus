@@ -226,7 +226,11 @@ fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
 
 fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Result<()> {
     let mut n_attempts = 0;
-    println!("{:?}", stops);
+
+    let stops = match stops.len() {
+        0 => get_stops(&agency, &route)?,
+        _ => stops
+    };
 
     loop {
         if n_attempts > 0 {
@@ -249,21 +253,31 @@ fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Result<
     }
 }
 
-fn get_schedule(agency: String, route: String) -> Result<()> {
-    let url = get_schedule_url(&agency, &route);
+fn _get_schedule(agency: &String, route: &String) -> Result<Schedule> {
+    let url = get_schedule_url(agency, route);
     let downloaded: Option<Schedule> = download(&url).unwrap_or_else(|e| {
         warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
         None
     });
-    let schedule = match downloaded {
-        Some(schedule) => schedule,
-        None => {
-            return Ok(());
-        }
-    };
+    let schedule = downloaded.unwrap();
+    Ok(schedule)
+}
+
+fn get_schedule(agency: String, route: String) -> Result<()> {
+    let schedule = _get_schedule(&agency, &route)?;
     let schedule_json = serde_json::to_string(&schedule).unwrap();
     println!("{}", schedule_json);
     Ok(())
+}
+
+fn get_stops(agency: &String, route: &String) -> Result<Vec<String>> {
+    let routes: Vec<Route> = _get_schedule(agency, route)?.routes;
+    let blocks: Vec<VehicleBlock> = routes.into_iter().flat_map(|r| r.blocks).collect();
+    let stops: Vec<VehicleStop> = blocks.into_iter().flat_map(|b| b.stops).collect();
+    let mut stop_tags: Vec<String>  = stops.into_iter().map(|s| s.tag).collect();
+    stop_tags.sort_unstable();
+    stop_tags.dedup();
+    Ok(stop_tags)
 }
 
 fn get_locations(agency: String, route: String) -> Result<()> {
@@ -365,7 +379,7 @@ fn main() {
                     .required(true),
                 Arg::with_name("stops")
                     .help("Stop tags to get predictions for (ex: 6997)")
-                    .required(true)
+                    .required(false)
                     .multiple(true)
                     .use_delimiter(true)
                     .value_delimiter(" ")
@@ -397,8 +411,10 @@ fn main() {
         ("predictions", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
-            let stops = subc.values_of("stops").unwrap().collect::<Vec<_>>();
-            let stops = stops.into_iter().map(|s| String::from(s)).collect();
+            let stops: Vec<String> = match subc.values_of("stops") {
+                Some(stops) => stops.collect::<Vec<_>>().into_iter().map(|s| String::from(s)).collect(),
+                None => Vec::new(),
+            };
             get_predictions(agency, route, stops)
         },
         ("schedule", Some(subc)) => {
