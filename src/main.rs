@@ -120,6 +120,40 @@ struct Prediction {
     pub trip_tag: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Schedule {
+    #[serde(rename = "route")]
+    pub routes: Vec<Route>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Route {
+    pub tag: String,
+    pub title: String,
+    pub schedule_class: String,
+    pub service_class: String,
+    pub direction: String,
+    #[serde(rename = "tr")]
+    pub blocks: Vec<VehicleBlock>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct VehicleBlock {
+    #[serde(rename = "stop")]
+    pub stops: Vec<VehicleStop>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct VehicleStop {
+    pub tag: String,
+    #[serde(deserialize_with = "from_string", default)]
+    pub epoch_time: i64,
+}
+
 pub trait Contents {
     fn is_empty(&self) -> bool;
 }
@@ -133,6 +167,12 @@ impl Contents for Locations {
 impl Contents for PredictionsList {
     fn is_empty(&self) -> bool {
         self.predictions.len() == 0
+    }
+}
+
+impl Contents for Schedule {
+    fn is_empty(&self) -> bool {
+        self.routes.len() == 0
     }
 }
 
@@ -154,6 +194,14 @@ error_chain! {
         IoError(std::io::Error);
         SerdeError(serde_xml_rs::Error);
     }
+}
+
+fn get_schedule_url(agency: &String, route: &String) -> String {
+    format!(
+        "http://webservices.nextbus.com/service/publicXMLFeed?command=schedule&a={agency}&r={route}",
+        agency = agency,
+        route = route,
+    )
 }
 
 fn get_predictions_url(agency: &String, route: &String, stop: &String) -> String {
@@ -195,6 +243,19 @@ fn get_predictions(agency: String, route: String) -> Result<()> {
 }
 
 fn get_schedule(agency: String, route: String) -> Result<()> {
+    let url = get_schedule_url(&agency, &route);
+    let downloaded: Option<Schedule> = download(&url).unwrap_or_else(|e| {
+        warn!("Error downloading {} from {}", e.display_chain().to_string(), url);
+        None
+    });
+    let schedule = match downloaded {
+        Some(schedule) => schedule,
+        None => {
+            return Ok(());
+        }
+    };
+    let schedule_json = serde_json::to_string(&schedule).unwrap();
+    println!("{}", schedule_json);
     Ok(())
 }
 
@@ -293,6 +354,20 @@ fn main() {
                     .required(true),
                 Arg::with_name("route")
                     .help("Route and stop identifier, separated by a pipe | character (ex: N|6997)")
+                    .index(2)
+                    .required(true)
+                    .multiple(true),
+            ])
+        )
+        .subcommand(SubCommand::with_name("schedule")
+            .about("Get predictions for vehicle arrival times")
+            .args(&[
+                Arg::with_name("agency")
+                    .help("Agency of the route to schedules for (ex: sf-muni)")
+                    .index(1)
+                    .required(true),
+                Arg::with_name("route")
+                    .help("Route to retrieve schedules for (ex: N)")
                     .index(2)
                     .required(true)
                     .multiple(true),
