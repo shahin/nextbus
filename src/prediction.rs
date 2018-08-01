@@ -7,7 +7,7 @@ use serde_json;
 use client;
 use client::from_string;
 use errors::*;
-use schedule::get_stops;
+use stops;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +76,7 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
     let mut n_attempts = 0;
 
     let stops = match stops.len() {
-        0 => get_stops(&agency, &route)?,
+        0 => stops::get_stop_ids(&agency, &route)?,
         _ => stops
     };
 

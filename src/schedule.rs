@@ -72,13 +72,3 @@ pub fn get_schedule(agency: String, route: String) -> Result<()> {
     println!("{}", schedule_json);
     Ok(())
 }
-
-pub fn get_stops(agency: &String, route: &String) -> Result<Vec<String>> {
-    let routes: Vec<Route> = _get_schedule(agency, route)?.routes;
-    let blocks: Vec<VehicleBlock> = routes.into_iter().flat_map(|r| r.blocks).collect();
-    let stops: Vec<VehicleStop> = blocks.into_iter().flat_map(|b| b.stops).collect();
-    let mut stop_tags: Vec<String>  = stops.into_iter().map(|s| s.tag).collect();
-    stop_tags.sort_unstable();
-    stop_tags.dedup();
-    Ok(stop_tags)
-}

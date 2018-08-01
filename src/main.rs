@@ -29,6 +29,7 @@ mod client;
 mod location;
 mod schedule;
 mod prediction;
+mod stops;
 
 fn main() {
     env_logger::init();
@@ -75,6 +76,20 @@ fn main() {
                     .multiple(true),
             ])
         )
+        .subcommand(SubCommand::with_name("stops")
+            .about("Get the published stops for a route")
+            .args(&[
+                Arg::with_name("agency")
+                    .help("Agency of the route to stops for (ex: sf-muni)")
+                    .index(1)
+                    .required(true),
+                Arg::with_name("route")
+                    .help("Route to retrieve stops for (ex: N)")
+                    .index(2)
+                    .required(true)
+                    .multiple(true),
+            ])
+        )
         .get_matches();
 
     match cli.subcommand() {
@@ -96,6 +111,11 @@ fn main() {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             schedule::get_schedule(agency, route)
+        },
+        ("stops", Some(subc)) => {
+            let route = String::from(subc.value_of("route").unwrap_or(""));
+            let agency = String::from(subc.value_of("agency").unwrap());
+            stops::get_stops(agency, route)
         },
         (c, Some(_)) => panic!("Unimplemented subcommand '{}'", c),
         _ => panic!("Missing or invalid subcommand"),
