@@ -18,7 +18,8 @@ struct PredictionsList {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Predictions {
-    pub direction: Direction,
+    #[serde(rename = "direction", default)]
+    pub directions: Vec<Direction>,
     pub agency_title: String,
     pub route_title: String,
     pub route_tag: String,
