@@ -29,6 +29,7 @@ mod client;
 mod location;
 mod schedule;
 mod prediction;
+mod routes;
 mod stops;
 
 fn main() {
@@ -90,6 +91,15 @@ fn main() {
                     .multiple(true),
             ])
         )
+        .subcommand(SubCommand::with_name("routes")
+            .about("Get the published routes for an agency")
+            .args(&[
+                Arg::with_name("agency")
+                    .help("Agency of the route to stops for (ex: sf-muni)")
+                    .index(1)
+                    .required(true),
+            ])
+        )
         .get_matches();
 
     match cli.subcommand() {
@@ -116,6 +126,10 @@ fn main() {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             stops::get_stops(agency, route)
+        },
+        ("routes", Some(subc)) => {
+            let agency = String::from(subc.value_of("agency").unwrap());
+            routes::get_routes(agency)
         },
         (c, Some(_)) => panic!("Unimplemented subcommand '{}'", c),
         _ => panic!("Missing or invalid subcommand"),
