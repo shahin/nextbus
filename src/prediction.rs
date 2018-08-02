@@ -88,7 +88,6 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
         n_attempts += 1;
 
         let url = get_predictions_url(&agency, &route, &stops);
-        println!("{}", url);
         let downloaded: Option<PredictionsList> = client::download(&url).unwrap_or_else(|e| {
             warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
             None
