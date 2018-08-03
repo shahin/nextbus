@@ -60,7 +60,13 @@ struct Prediction {
 
 impl client::Contents for PredictionsList {
     fn is_empty(&self) -> bool {
-        self.predictions.len() == 0
+        let nonempty_preds = self
+            .predictions
+            .iter()
+            .map(|p| p.directions.len())
+            .filter(|&l| l > 0)
+            .collect::<Vec<usize>>();
+        nonempty_preds.len() == 0
     }
 }
 
