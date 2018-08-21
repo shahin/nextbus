@@ -37,7 +37,6 @@ pub fn download<'de, T>(url: &String) -> Result<Option<T>> where
             debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             deserialize(body.as_bytes())
                 .and_then(|d: T| {
-                    // TODO: add is_empty() trait to Locations, PredictionList, ... to return None here if we got nothing
                     if d.is_empty() {
                         Ok(None)
                     }
