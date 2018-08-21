@@ -80,7 +80,7 @@ fn get_predictions_url(agency: &String, route: &String, stops: &Vec<String>) -> 
 }
 
 pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Result<()> {
-    let mut n_attempts = 0;
+    let mut pause = false;
 
     let stops = match stops.len() {
         0 => stops::get_stop_ids(&agency, &route)?,
@@ -88,10 +88,10 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
     };
 
     loop {
-        if n_attempts > 0 {
+        if pause {
             thread::sleep(Duration::from_millis(20000));
         }
-        n_attempts += 1;
+        pause = true;
 
         let url = get_predictions_url(&agency, &route, &stops);
         let downloaded: Option<PredictionsList> = client::download(&url).unwrap_or_else(|e| {
