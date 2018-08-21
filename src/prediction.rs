@@ -29,6 +29,7 @@ struct Predictions {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Direction {
+    pub title: String,
     pub prediction: Vec<Prediction>,
 }
 
@@ -83,7 +84,7 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
     let mut pause = false;
 
     let stops = match stops.len() {
-        0 => stops::get_stop_ids(&agency, &route)?,
+        0 => stops::get_stop_tags(&agency, &route)?,
         _ => stops
     };
 
