@@ -35,7 +35,13 @@ mod stops;
 fn main() {
     env_logger::init();
 
+    let version_string: &str = &format!(
+        "{} {} {}",
+        env!("VERGEN_SEMVER"), env!("VERGEN_SHA"), env!("VERGEN_BUILD_TIMESTAMP"),
+    );
+
     let cli = App::new("Nextbus Client")
+        .version(version_string)
         .author("Shahin Saneinejad")
         .about("Get real-time locations of transit vehicles as JSON")
         .subcommand(SubCommand::with_name("locations")
