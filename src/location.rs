@@ -82,7 +82,7 @@ pub fn get_locations(agency: String, route: String) -> Result<()> {
 
     loop {
 
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(5000));
 
         let epoch = match times.get(&route) {
             Some(&i) => i,
