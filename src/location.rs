@@ -59,6 +59,7 @@ struct VehicleTime {
     pub predictable: bool,
     pub heading: i16,
     pub speed_km_hr: u32,
+    pub leading_vehicle_id: String,
 }
 
 impl client::Contents for Locations {
@@ -110,6 +111,7 @@ pub fn get_locations(agency: String, route: String) -> Result<()> {
             predictable: v.predictable,
             heading: v.heading,
             speed_km_hr: v.speed_km_hr,
+            leading_vehicle_id: v.leading_vehicle_id,
             epoch: updated_time - ((v.secs_since_report * 1000) as u64),
         }).collect();
 
