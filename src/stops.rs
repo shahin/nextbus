@@ -154,9 +154,7 @@ pub fn get_stop_tags(agency: &String, route: &String) -> Result<Vec<String>> {
             d.stops.into_iter().map(|s: Stop| s.tag).collect::<Vec<String>>()
         }).collect::<Vec<String>>()
     }).collect();
-    println!("{:?}", stop_tags);
     stop_tags.sort_unstable();
     stop_tags.dedup();
-    let ret: Vec<String> = vec![String::from("a")];
-    Ok(ret)
+    Ok(stop_tags)
 }
