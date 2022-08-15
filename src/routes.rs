@@ -47,6 +47,7 @@ pub fn get_routes(agency: String) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn get_route_tags(agency: &String) -> Result<Vec<String>> {
     let route_list = _get_routes(agency)?;
     let routes: Vec<String> = route_list.routes.into_iter().map(|r| r.tag).collect();
