@@ -19,10 +19,10 @@ struct RouteConfig {
 struct Route {
     pub tag: String,
     pub title: String,
-    pub latMin: String,
-    pub latMax: String,
-    pub lonMin: String,
-    pub lonMax: String,
+    pub lat_min: String,
+    pub lat_max: String,
+    pub lon_min: String,
+    pub lon_max: String,
     #[serde(rename = "stop")]
     pub stops: Vec<Stop>,
     #[serde(rename = "direction")]
@@ -63,10 +63,10 @@ struct StopTag {
 struct FlatRoute {
     pub tag: String,
     pub title: String,
-    pub latMin: String,
-    pub latMax: String,
-    pub lonMin: String,
-    pub lonMax: String,
+    pub lat_min: String,
+    pub lat_max: String,
+    pub lon_min: String,
+    pub lon_max: String,
     pub directions: Vec<FlatDirection>,
 }
 
@@ -111,10 +111,10 @@ fn _get_stops(agency: &String, route: &String) -> Result<Vec<FlatRoute>> {
         FlatRoute {
             tag: r.tag.clone(),
             title: r.title.clone(),
-            latMin: r.latMin.clone(),
-            latMax: r.latMax.clone(),
-            lonMin: r.lonMin.clone(),
-            lonMax: r.lonMax.clone(),
+            lat_min: r.lat_min.clone(),
+            lat_max: r.lat_max.clone(),
+            lon_min: r.lon_min.clone(),
+            lon_max: r.lon_max.clone(),
             directions: r.directions.iter().map(|d| {
                 FlatDirection{
                     tag: d.tag.clone(),
