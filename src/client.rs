@@ -28,12 +28,10 @@ pub fn download<'de, T>(url: &String) -> Result<Option<T>> where
 
     let mut response = reqwest::get(&url[..])?;
     let body = response.text()?;
-    let date = response.headers().get::<reqwest::header::Date>()
-        .map(|d| **d)
-        .unwrap();
+    let date = response.headers().get(reqwest::header::DATE).unwrap().to_str().unwrap();
     let status = response.status();
     match status {
-        reqwest::StatusCode::Ok => {
+        reqwest::StatusCode::OK => {
             debug!(r#"request="{}" response="{}" response_date="{}""#, url, status, date);
             deserialize(body.as_bytes())
                 .and_then(|d: T| {
