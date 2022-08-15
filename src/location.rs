@@ -70,7 +70,7 @@ impl client::Contents for Locations {
 
 fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a={agency}&r={route}&t={epoch:?}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=vehicleLocations&a={agency}&r={route}&t={epoch:?}",
         agency = agency,
         epoch = epoch,
         route = route,

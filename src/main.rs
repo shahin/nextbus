@@ -9,6 +9,7 @@ extern crate serde_json;
 
 extern crate clap;
 
+use std::error::Error;
 use clap::{Arg, App, SubCommand};
 
 pub trait Contents {
@@ -32,7 +33,7 @@ mod prediction;
 mod routes;
 mod stops;
 
-fn main() {
+fn main() -> Result<(), impl Error> {
     env_logger::init();
 
     let version_string: &str = &format!(
@@ -139,6 +140,6 @@ fn main() {
         },
         (c, Some(_)) => panic!("Unimplemented subcommand '{}'", c),
         _ => panic!("Missing or invalid subcommand"),
-    };
+    }
 
 }

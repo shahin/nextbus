@@ -25,7 +25,7 @@ impl client::Contents for Routes {
 
 fn get_routes_url(agency: &String) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a={agency}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=routeList&a={agency}",
         agency = agency,
     )
 }
@@ -47,6 +47,7 @@ pub fn get_routes(agency: String) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn get_route_tags(agency: &String) -> Result<Vec<String>> {
     let route_list = _get_routes(agency)?;
     let routes: Vec<String> = route_list.routes.into_iter().map(|r| r.tag).collect();
