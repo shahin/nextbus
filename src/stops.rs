@@ -89,7 +89,7 @@ impl client::Contents for RouteConfig {
 
 fn get_stops_url(agency: &String, route: &String) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a={agency}&r={route}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=routeConfig&a={agency}&r={route}",
         agency = agency,
         route = route,
     )

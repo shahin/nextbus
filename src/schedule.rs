@@ -50,7 +50,7 @@ impl client::Contents for Schedule {
 
 fn get_schedule_url(agency: &String, route: &String) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=schedule&a={agency}&r={route}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=schedule&a={agency}&r={route}",
         agency = agency,
         route = route,
     )

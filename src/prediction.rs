@@ -74,7 +74,7 @@ impl client::Contents for PredictionsList {
 fn get_predictions_url(agency: &String, route: &String, stops: &Vec<String>) -> String {
     let route_stops: Vec<String> = stops.into_iter().map(|s| route.to_string() + "|" + s).collect();
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={stops}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={stops}",
         agency = agency,
         stops = route_stops.join("&stops="),
     )

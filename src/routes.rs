@@ -25,7 +25,7 @@ impl client::Contents for Routes {
 
 fn get_routes_url(agency: &String) -> String {
     format!(
-        "http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a={agency}",
+        "https://retro.umoiq.com/service/publicXMLFeed?command=routeList&a={agency}",
         agency = agency,
     )
 }
