@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use serde_json;
 
 use client;
-use client::from_string;
 use errors::*;
 
 #[derive(Serialize, Deserialize, Debug)]
