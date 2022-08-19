@@ -1,8 +1,8 @@
 use error_chain::ChainedError;
 
-use std::thread;
-use std::time::{Duration};
 use serde_json;
+use std::thread;
+use std::time::Duration;
 
 use client;
 use client::from_string;
@@ -72,7 +72,10 @@ impl client::Contents for PredictionsList {
 }
 
 fn get_predictions_url(agency: &String, route: &String, stops: &Vec<String>) -> String {
-    let route_stops: Vec<String> = stops.into_iter().map(|s| route.to_string() + "|" + s).collect();
+    let route_stops: Vec<String> = stops
+        .into_iter()
+        .map(|s| route.to_string() + "|" + s)
+        .collect();
     format!(
         "https://retro.umoiq.com/service/publicXMLFeed?command=predictionsForMultiStops&a={agency}&stops={stops}",
         agency = agency,
@@ -85,7 +88,7 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
 
     let stops = match stops.len() {
         0 => stops::get_stop_tags(&agency, &route)?,
-        _ => stops
+        _ => stops,
     };
 
     loop {
@@ -96,7 +99,11 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
 
         let url = get_predictions_url(&agency, &route, &stops);
         let downloaded: Option<PredictionsList> = client::download(&url).unwrap_or_else(|e| {
-            warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
+            warn!(
+                "Download error: {} from URL={}",
+                e.display_chain().to_string(),
+                url
+            );
             None
         });
         let predictions = match downloaded {

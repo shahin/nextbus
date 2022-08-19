@@ -1,7 +1,7 @@
-use error_chain::ChainedError;
-use serde_json;
 use client;
+use error_chain::ChainedError;
 use errors::*;
+use serde_json;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +33,11 @@ fn get_routes_url(agency: &String) -> String {
 fn _get_routes(agency: &String) -> Result<Routes> {
     let url = get_routes_url(agency);
     let downloaded: Option<Routes> = client::download(&url).unwrap_or_else(|e| {
-        warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
+        warn!(
+            "Download error: {} from URL={}",
+            e.display_chain().to_string(),
+            url
+        );
         None
     });
     let routes = downloaded.unwrap();

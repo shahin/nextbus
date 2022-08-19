@@ -59,7 +59,11 @@ fn get_schedule_url(agency: &String, route: &String) -> String {
 fn _get_schedule(agency: &String, route: &String) -> Result<Schedule> {
     let url = get_schedule_url(agency, route);
     let downloaded: Option<Schedule> = client::download(&url).unwrap_or_else(|e| {
-        warn!("Download error: {} from URL={}", e.display_chain().to_string(), url);
+        warn!(
+            "Download error: {} from URL={}",
+            e.display_chain().to_string(),
+            url
+        );
         None
     });
     let schedule = downloaded.unwrap();

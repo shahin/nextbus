@@ -1,36 +1,39 @@
-extern crate reqwest;
 extern crate env_logger;
-#[macro_use] extern crate log;
+extern crate reqwest;
+#[macro_use]
+extern crate log;
 extern crate serde;
-extern crate serde_xml_rs;
 extern crate serde_json;
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate error_chain;
+extern crate serde_xml_rs;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate error_chain;
 
 extern crate clap;
 
+use clap::{App, Arg, SubCommand};
 use std::error::Error;
-use clap::{Arg, App, SubCommand};
 
 pub trait Contents {
     fn is_empty(&self) -> bool;
 }
 
 mod errors {
-	error_chain! {
-		foreign_links {
-			ReqError(::reqwest::Error);
-			IoError(::std::io::Error);
-			SerdeError(::serde_xml_rs::Error);
-		}
-	}
+    error_chain! {
+        foreign_links {
+            ReqError(::reqwest::Error);
+            IoError(::std::io::Error);
+            SerdeError(::serde_xml_rs::Error);
+        }
+    }
 }
 
 mod client;
 mod location;
-mod schedule;
 mod prediction;
 mod routes;
+mod schedule;
 mod stops;
 
 fn main() -> Result<(), impl Error> {
@@ -38,7 +41,9 @@ fn main() -> Result<(), impl Error> {
 
     let version_string: &str = &format!(
         "{} {} {}",
-        env!("VERGEN_SEMVER"), env!("VERGEN_SHA"), env!("VERGEN_BUILD_TIMESTAMP"),
+        env!("VERGEN_SEMVER"),
+        env!("VERGEN_SHA"),
+        env!("VERGEN_BUILD_TIMESTAMP"),
     );
 
     let cli = App::new("Nextbus Client")
@@ -114,32 +119,35 @@ fn main() -> Result<(), impl Error> {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             location::get_locations(agency, route)
-        },
+        }
         ("predictions", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             let stops: Vec<String> = match subc.values_of("stops") {
-                Some(stops) => stops.collect::<Vec<_>>().into_iter().map(|s| String::from(s)).collect(),
+                Some(stops) => stops
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .map(|s| String::from(s))
+                    .collect(),
                 None => Vec::new(),
             };
             prediction::get_predictions(agency, route, stops)
-        },
+        }
         ("schedule", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             schedule::get_schedule(agency, route)
-        },
+        }
         ("stops", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
             stops::get_stops(agency, route)
-        },
+        }
         ("routes", Some(subc)) => {
             let agency = String::from(subc.value_of("agency").unwrap());
             routes::get_routes(agency)
-        },
+        }
         (c, Some(_)) => panic!("Unimplemented subcommand '{}'", c),
         _ => panic!("Missing or invalid subcommand"),
     }
-
 }
