@@ -9,3 +9,4 @@ repos:
   rev: v1.0
   hooks:
   - id: fmt
+    commit_changes: true
