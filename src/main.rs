@@ -54,6 +54,7 @@ fn main() -> Result<(), impl Error> {
             .about("Get real-time locations for vehicles")
             .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
             .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+            .args_from_usage("-p, --pause=[SECONDS] 'Repeat the request after pausing for the given SECONDS'")
         )
         .subcommand(SubCommand::with_name("predictions")
             .about("Get predictions for vehicle arrival times")
@@ -66,6 +67,12 @@ fn main() -> Result<(), impl Error> {
                     .help("Route to get predictions for (ex: N)")
                     .index(2)
                     .required(true),
+                Arg::with_name("pause_seconds")
+                    .short("p")
+                    .long("--pause")
+                    .value_name("SECONDS")
+                    .help("Repeat the request after pausing for the given SECONDS")
+                    .required(false),
                 Arg::with_name("stops")
                     .help("Stop tags to get predictions for (ex: 6997)")
                     .required(false)
@@ -118,11 +125,25 @@ fn main() -> Result<(), impl Error> {
         ("locations", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
-            location::get_locations(agency, route)
+            let pause_seconds = match subc.value_of("pause") {
+                None => None,
+                Some(s) => Some(
+                    s.parse::<u64>()
+                        .expect(&format!("Must provide a positive integer, got '{}'", s)),
+                ),
+            };
+            location::get_locations(agency, route, pause_seconds)
         }
         ("predictions", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
+            let pause_seconds = match subc.value_of("pause_seconds") {
+                None => None,
+                Some(s) => Some(
+                    s.parse::<u64>()
+                        .expect(&format!("Must provide a positive integer, got {}", s)),
+                ),
+            };
             let stops: Vec<String> = match subc.values_of("stops") {
                 Some(stops) => stops
                     .collect::<Vec<_>>()
@@ -131,7 +152,7 @@ fn main() -> Result<(), impl Error> {
                     .collect(),
                 None => Vec::new(),
             };
-            prediction::get_predictions(agency, route, stops)
+            prediction::get_predictions(agency, route, stops, pause_seconds)
         }
         ("schedule", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
