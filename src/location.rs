@@ -91,6 +91,8 @@ pub fn get_locations(agency: String, route: String, pause_seconds: Option<u64>) 
         });
 
         match downloaded {
+            // a successful response may contain no locations if there are no vehicles, or
+            // if there are no updates to vehicle locations since the last given epoch
             Some(locations) => {
                 let locations_json;
                 (locations_json, epoch) = parse_locations(locations);
