@@ -54,6 +54,7 @@ fn main() -> Result<(), impl Error> {
             .about("Get real-time locations for vehicles")
             .args_from_usage("<agency> 'Agency of the route to retrieve locations for (ex: sf-muni)'")
             .args_from_usage("[route] 'Optional name of the route to retrieve locations for (default: all routes)'")
+            .args_from_usage("-p, --pause=[SECONDS] 'Repeat the request after pausing for the given SECONDS'")
         )
         .subcommand(SubCommand::with_name("predictions")
             .about("Get predictions for vehicle arrival times")
@@ -124,7 +125,14 @@ fn main() -> Result<(), impl Error> {
         ("locations", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));
             let agency = String::from(subc.value_of("agency").unwrap());
-            location::get_locations(agency, route)
+            let pause_seconds = match subc.value_of("pause") {
+                None => None,
+                Some(s) => Some(
+                    s.parse::<u64>()
+                        .expect(&format!("Must provide a positive integer, got '{}'", s)),
+                ),
+            };
+            location::get_locations(agency, route, pause_seconds)
         }
         ("predictions", Some(subc)) => {
             let route = String::from(subc.value_of("route").unwrap_or(""));

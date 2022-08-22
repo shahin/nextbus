@@ -1,7 +1,6 @@
 use error_chain::ChainedError;
 
 use serde_json;
-use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
 
@@ -77,17 +76,10 @@ fn get_locations_url(agency: &String, route: &String, epoch: &u64) -> String {
     )
 }
 
-pub fn get_locations(agency: String, route: String) -> Result<()> {
-    let mut times = HashMap::new();
+pub fn get_locations(agency: String, route: String, pause_seconds: Option<u64>) -> Result<()> {
+    let mut epoch = 0;
 
     loop {
-        thread::sleep(Duration::from_millis(5000));
-
-        let epoch = match times.get(&route) {
-            Some(&i) => i,
-            None => 0,
-        };
-
         let url = get_locations_url(&agency, &route, &epoch);
         let downloaded: Option<Locations> = client::download(&url).unwrap_or_else(|e| {
             warn!(
@@ -97,32 +89,44 @@ pub fn get_locations(agency: String, route: String) -> Result<()> {
             );
             None
         });
-        let locations = match downloaded {
-            Some(locations) => locations,
-            None => continue,
+
+        match downloaded {
+            Some(locations) => {
+                let locations_json;
+                ((locations_json, epoch) = parse_locations(locations));
+                println!("{}", locations_json);
+            }
+            None => (),
         };
 
-        let updated_time = locations.updated_time.time;
-        times.insert(route.clone(), updated_time);
-
-        let location_times: Vec<VehicleTime> = locations
-            .vehicles
-            .into_iter()
-            .map(|v| VehicleTime {
-                id: v.id,
-                route_tag: v.route_tag,
-                dir_tag: v.dir_tag,
-                lat: v.lat,
-                lon: v.lon,
-                predictable: v.predictable,
-                heading: v.heading,
-                speed_km_hr: v.speed_km_hr,
-                leading_vehicle_id: v.leading_vehicle_id,
-                epoch: updated_time - ((v.secs_since_report * 1000) as u64),
-            })
-            .collect();
-
-        let locations_json = serde_json::to_string(&location_times).unwrap();
-        println!("{}", locations_json);
+        match pause_seconds {
+            None => return Ok(()),
+            Some(s) => thread::sleep(Duration::from_millis(s * 1000)),
+        }
     }
+}
+
+fn parse_locations(locations: Locations) -> (String, u64) {
+    let updated_time = locations.updated_time.time;
+
+    let location_times: Vec<VehicleTime> = locations
+        .vehicles
+        .into_iter()
+        .map(|v| VehicleTime {
+            id: v.id,
+            route_tag: v.route_tag,
+            dir_tag: v.dir_tag,
+            lat: v.lat,
+            lon: v.lon,
+            predictable: v.predictable,
+            heading: v.heading,
+            speed_km_hr: v.speed_km_hr,
+            leading_vehicle_id: v.leading_vehicle_id,
+            epoch: updated_time - ((v.secs_since_report * 1000) as u64),
+        })
+        .collect();
+
+    let locations_json = serde_json::to_string(&location_times).unwrap();
+
+    return (locations_json, updated_time);
 }
