@@ -93,7 +93,7 @@ pub fn get_locations(agency: String, route: String, pause_seconds: Option<u64>) 
         match downloaded {
             Some(locations) => {
                 let locations_json;
-                ((locations_json, epoch) = parse_locations(locations));
+                (locations_json, epoch) = parse_locations(locations);
                 println!("{}", locations_json);
             }
             None => (),
