@@ -83,20 +83,18 @@ fn get_predictions_url(agency: &String, route: &String, stops: &Vec<String>) -> 
     )
 }
 
-pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Result<()> {
-    let mut pause = false;
-
+pub fn get_predictions(
+    agency: String,
+    route: String,
+    stops: Vec<String>,
+    pause_seconds: Option<u64>,
+) -> Result<()> {
     let stops = match stops.len() {
         0 => stops::get_stop_tags(&agency, &route)?,
         _ => stops,
     };
 
     loop {
-        if pause {
-            thread::sleep(Duration::from_millis(20000));
-        }
-        pause = true;
-
         let url = get_predictions_url(&agency, &route, &stops);
         let downloaded: Option<PredictionsList> = client::download(&url).unwrap_or_else(|e| {
             warn!(
@@ -112,5 +110,10 @@ pub fn get_predictions(agency: String, route: String, stops: Vec<String>) -> Res
         };
         let predictions_json = serde_json::to_string(&predictions).unwrap();
         println!("{}", predictions_json);
+
+        match pause_seconds {
+            None => return Ok(()),
+            Some(s) => thread::sleep(Duration::from_millis(s * 1000)),
+        }
     }
 }
